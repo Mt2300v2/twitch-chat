@@ -60,6 +60,7 @@ class ChatLogger:
     def log_message(self, channel, user, message):
         clean_msg = ansi_escape.sub('', message).strip()
         timestamp = datetime.now().isoformat()
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] {channel} | {user}: {clean_msg}")
         with csv_lock:
             with open(LOG_FILE, 'a', newline='', encoding='utf-8') as f:
                 csv.writer(f).writerow([timestamp, channel, user, clean_msg])
