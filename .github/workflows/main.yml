@@ -39,7 +39,7 @@ jobs:
 
     - name: Upload Final Logs
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: chat-logs
         path: chat_logs.csv
