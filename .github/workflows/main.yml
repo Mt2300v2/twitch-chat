@@ -43,3 +43,5 @@ jobs:
       with:
         name: chat-logs
         path: chat_logs.csv
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
