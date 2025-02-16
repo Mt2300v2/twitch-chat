@@ -15,7 +15,7 @@ CHANNELS = ["#illojuan", "#xqc"]  # Add your channels
 ANON_NICK = "justinfan12345"
 LOG_FILE = "chat_logs.csv"
 UPLOAD_INTERVAL = 300  # 5 minutes (GitHub Actions max: 60m)
-MAX_RUN_TIME = 3000  # 50 minutes (leaving 10m for cleanup)
+MAX_RUN_TIME = 30  # 50 minutes (leaving 10m for cleanup)
 
 # ANSI escape code removal
 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
