@@ -14,7 +14,7 @@ PORT = 6667
 CHANNELS = ["#ninja", "#auronplay", "#rubius", "#thegrefg", "#tfue", "#shroud", "#pokimane", "#sodapoppin", "#riotgames", "#myth", "#sypherpk", "#nickmercs", "#summit1g", "#amouranth", "#esl_csgo", "#fortnite", "#loltyler1", "#bugha", "#montanablack88", "#dakotaz", "#drlupo", "#nickeh30", "#rocketleague", "#gotaga", "#gaules", "#faker", "#castro_1021", "#asmongold", "#fernanfloo", "#trymacs", "#syndicate", "#lirik", "#lolitofdez", "#loserfruit", "#wtcn", "#nightblue3", "#anomaly", "#imaqtpie", "#easportsfifa", "#cellbit", "#kendinemuzisyen", "#lilypichu", "#markiplier", "#rainbow6", "#yoda", "#twitch", "#bratishkinoff", "#solaryfortnite", "#unlostv", "#captainsparklez", "#bobross", "#boxbox", "#cdnthe3rd", "#gosu", "#cizzorz", "#yassuo", "#gamesdonequick", "#nadeshot", "#warframe", "#overwatchleague", "#jukes", "#doublelift", "#izakooo", "#rewinside", "#jahrein", "#joshog", "#forsen", "#mithrain", "#greekgodx", "#eleaguetv", "#scarra", "#rakin", "#sovietwomble", "#trick2g", "#gronkh", "#nl_kripp", "#alinity", "#kingrichard", "#cohhcarnage", "#dyrus", "#goldglove", "#ungespielt", "#voyboy", "#pashabiceps", "#skipnho", "#swiftor", "#callofduty", "#stpeach", "#starladder5", "#a_seagull", "#kittyplays", "#nick28t", "#grimmmz", "#sivhd", "#kinggothalion", "#yogscast", "#amaz", "#xqc", "#ludwig", "#illojuan"]  # Add your channels
 ANON_NICK = "justinfan12345"
 LOG_FILE = "chat_logs.csv"
-UPLOAD_INTERVAL = 300  # 5 minutes (GitHub Actions max: 60m)
+UPLOAD_INTERVAL = 5  # 5 minutes (GitHub Actions max: 60m)
 MAX_RUN_TIME = 30  # 50 minutes (leaving 10m for cleanup)
 
 # ANSI escape code removal
