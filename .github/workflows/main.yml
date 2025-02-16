@@ -33,7 +33,7 @@ jobs:
 
     - name: Run Chat Logger
       run: |
-        python -u twitch_chat_logger.py
+        python -u track.py
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
