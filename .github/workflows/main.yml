@@ -24,17 +24,10 @@ jobs:
 
     - name: Commit Logs
       run: |
-        git config --local user.email "actions@github.com"
-        git config --local user.name "GitHub Actions"
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
         git add chat_logs.csv
         git commit -m "Update chat logs [skip ci]" || echo "No changes"
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Upload Artifact
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: chat-logs-${{ github.run_id }}
-        path: chat_logs.csv
