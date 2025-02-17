@@ -25,7 +25,7 @@
     button:hover {
       background-color: #333;
     }
-    input[type="date"] {
+    input[type="date"], input[type="checkbox"] {
       padding: 5px;
       margin: 0 5px;
       border-radius: 4px;
@@ -57,6 +57,7 @@
 
   <!-- Filtro de fecha -->
   <div id="filterArea">
+    <label><input type="checkbox" id="allTime" checked /> All Time</label>
     <label for="startDate">Start Date:</label>
     <input type="date" id="startDate" />
     <label for="endDate">End Date:</label>
@@ -120,7 +121,7 @@
     }
 
     async function processCSV() {
-      // Eliminar gráficos existentes si hay (para re-procesar con filtros)
+      // Destruir gráficos existentes (para re-procesar con filtros)
       for (let key in charts) {
         if (charts[key]) {
           charts[key].destroy();
@@ -131,10 +132,15 @@
       const data = await fetchData();
 
       // Leer filtros de fecha
-      let startDateInput = document.getElementById('startDate').value;
-      let endDateInput = document.getElementById('endDate').value;
-      let startDate = startDateInput ? new Date(startDateInput) : null;
-      let endDate = endDateInput ? new Date(endDateInput) : null;
+      const allTime = document.getElementById('allTime').checked;
+      let startDate = document.getElementById('startDate').value ? new Date(document.getElementById('startDate').value) : null;
+      let endDate = document.getElementById('endDate').value ? new Date(document.getElementById('endDate').value) : null;
+      
+      // Si "All Time" está marcado, ignoramos el filtro de fechas
+      if (allTime) {
+        startDate = null;
+        endDate = null;
+      }
 
       // Inicialización de estructuras de datos
       const channelCounts = {};
@@ -159,7 +165,7 @@
         if (!timestamp) return;
 
         let rowDateObj = new Date(timestamp);
-        // Aplicar filtro de fecha si se estableció
+        // Aplicar filtro de fecha si no es "All Time"
         if ((startDate && rowDateObj < startDate) || (endDate && rowDateObj > endDate)) {
           return;
         }
@@ -246,7 +252,6 @@
       const sortedDates = Object.keys(messagesOverTime).sort();
       let cumulativeUnique = new Set();
       const cumulativeUniqueUsers = sortedDates.map(date => {
-        // Aquí, para cada fecha, unimos el conjunto actual con los usuarios de esa fecha
         uniqueUsersOverTime[date].forEach(u => cumulativeUnique.add(u));
         return cumulativeUnique.size;
       });
@@ -318,4 +323,4 @@
       createChart('channelContribution', 'pie', 'Channel Contribution', { labels: channelContributionLabels, data: channelContributionData });
       
       // 10. Mensajes acumulativos a lo largo del tiempo
-      const cumulativeMessages = [];\n      let cumul = 0;\n      sortedDates.forEach(date => {\n        cumul += messagesOverTime[date];\n        cumulativeMessages.push(cumul);\n      });\n      createChart('cumulativeMessagesOverTime', 'line', 'Cumulative Messages Over Time', { labels: sortedDates, data: cumulativeMessages });\n\n      // 11. Promedio de longitud de mensaje a lo largo del tiempo\n      createChart('avgMsgLengthOverTime', 'line', 'Avg Message Length Over Time', getSortedLabelsData(avgMsgLengthOverTime));\n\n      // 12. Top 10 canales por usuarios únicos\n      createChart('topChannelsByUniqueUsers', 'bar', 'Top Channels by Unique Users', topChannelsByUniqueUsersData);\n\n      // 13. Distribución de longitud de mensaje (Histograma)\n      createChart('messageLengthDistribution', 'bar', 'Message Length Distribution', { labels: binLabels, data: bins });\n\n      // 14. Usuarios únicos acumulativos a lo largo del tiempo\n      createChart('cumulativeUniqueUsersOverTime', 'line', 'Cumulative Unique Users Over Time', { labels: sortedDates, data: cumulativeUniqueUsers });\n\n      // 15. Scatter: Total de mensajes vs Usuarios únicos\n      createScatterChart('scatterTotalVsUnique', 'Total vs Unique Users', scatterData);\n    }\n\n    // Función genérica para crear gráficos (excepto scatter)\n    function createChart(canvasId, chartType, chartLabel, chartData) {\n      const ctx = document.getElementById(canvasId).getContext('2d');\n      const config = {\n        type: chartType,\n        data: {\n          labels: chartData.labels,\n          datasets: [{\n            label: chartLabel,\n            data: chartData.data,\n            backgroundColor: (chartType === 'pie') ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 0.5)',\n            borderColor: (chartType === 'pie') ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 1)',\n            borderWidth: 1,\n            fill: (chartType === 'line') ? false : true\n          }]\n        },\n        options: { responsive: true }\n      };\n      charts[canvasId] = new Chart(ctx, config);\n    }\n\n    // Función específica para gráfico scatter (15)\n    function createScatterChart(canvasId, chartLabel, scatterData) {\n      const ctx = document.getElementById(canvasId).getContext('2d');\n      const config = {\n        type: 'scatter',\n        data: {\n          datasets: [{\n            label: chartLabel,\n            data: scatterData,\n            backgroundColor: 'rgba(255, 99, 132, 0.5)',\n            borderColor: 'rgba(255, 99, 132, 1)',\n            pointRadius: 5\n          }]\n        },\n        options: {\n          responsive: true,\n          scales: {\n            x: {\n              title: { display: true, text: 'Total Messages' }\n            },\n            y: {\n              title: { display: true, text: 'Unique Users' }\n            }\n          }\n        }\n      };\n      charts[canvasId] = new Chart(ctx, config);\n    }\n\n    // Función para generar colores dinámicamente\n    function generateColors(count) {\n      const colors = [];\n      for (let i = 0; i < count; i++) {\n        const hue = i * (360 / count);\n        colors.push(`hsl(${hue}, 70%, 50%)`);\n      }\n      return colors;\n    }\n\n    // Funciones para manejar la visibilidad de los gráficos\n    function showChart(chartId) {\n      const showAll = document.getElementById('showAll').checked;\n      if (showAll) {\n        document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'block');\n      } else {\n        document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'none');\n        document.getElementById(chartId).style.display = 'block';\n      }\n    }\n\n    function toggleShowAll() {\n      const showAll = document.getElementById('showAll').checked;\n      if (showAll) {\n        document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'block');\n      } else {\n        // Si se desactiva, se muestra el primero por defecto\n        showChart('messagesPerChannel');\n      }\n    }\n\n    // Funciones para aplicar y reiniciar el filtro de fecha\n    function applyFilter() {\n      processCSV();\n    }\n\n    function resetFilter() {\n      document.getElementById('startDate').value = '';\n      document.getElementById('endDate').value = '';\n      processCSV();\n    }\n  </script>\n</body>\n</html>
+      const cumulativeMessages = [];\n      let cumul = 0;\n      sortedDates.forEach(date => {\n        cumul += messagesOverTime[date];\n        cumulativeMessages.push(cumul);\n      });\n      createChart('cumulativeMessagesOverTime', 'line', 'Cumulative Messages Over Time', { labels: sortedDates, data: cumulativeMessages });\n\n      // 11. Promedio de longitud de mensaje a lo largo del tiempo\n      createChart('avgMsgLengthOverTime', 'line', 'Avg Message Length Over Time', getSortedLabelsData(avgMsgLengthOverTime));\n\n      // 12. Top 10 canales por usuarios únicos\n      createChart('topChannelsByUniqueUsers', 'bar', 'Top Channels by Unique Users', topChannelsByUniqueUsersData);\n\n      // 13. Distribución de longitud de mensaje (Histograma)\n      createChart('messageLengthDistribution', 'bar', 'Message Length Distribution', { labels: binLabels, data: bins });\n\n      // 14. Usuarios únicos acumulativos a lo largo del tiempo\n      createChart('cumulativeUniqueUsersOverTime', 'line', 'Cumulative Unique Users Over Time', { labels: sortedDates, data: cumulativeUniqueUsers });\n\n      // 15. Scatter: Total de mensajes vs Usuarios únicos\n      createScatterChart('scatterTotalVsUnique', 'Total vs Unique Users', scatterData);\n    }\n\n    // Función genérica para crear gráficos (excepto scatter)\n    function createChart(canvasId, chartType, chartLabel, chartData) {\n      const ctx = document.getElementById(canvasId).getContext('2d');\n      const config = {\n        type: chartType,\n        data: {\n          labels: chartData.labels,\n          datasets: [{\n            label: chartLabel,\n            data: chartData.data,\n            backgroundColor: (chartType === 'pie') ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 0.5)',\n            borderColor: (chartType === 'pie') ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 1)',\n            borderWidth: 1,\n            fill: (chartType === 'line') ? false : true\n          }]\n        },\n        options: { responsive: true }\n      };\n      charts[canvasId] = new Chart(ctx, config);\n    }\n\n    // Función específica para gráfico scatter (15)\n    function createScatterChart(canvasId, chartLabel, scatterData) {\n      const ctx = document.getElementById(canvasId).getContext('2d');\n      const config = {\n        type: 'scatter',\n        data: {\n          datasets: [{\n            label: chartLabel,\n            data: scatterData,\n            backgroundColor: 'rgba(255, 99, 132, 0.5)',\n            borderColor: 'rgba(255, 99, 132, 1)',\n            pointRadius: 5\n          }]\n        },\n        options: {\n          responsive: true,\n          scales: {\n            x: {\n              title: { display: true, text: 'Total Messages' }\n            },\n            y: {\n              title: { display: true, text: 'Unique Users' }\n            }\n          }\n        }\n      };\n      charts[canvasId] = new Chart(ctx, config);\n    }\n\n    // Función para generar colores dinámicamente\n    function generateColors(count) {\n      const colors = [];\n      for (let i = 0; i < count; i++) {\n        const hue = i * (360 / count);\n        colors.push(`hsl(${hue}, 70%, 50%)`);\n      }\n      return colors;\n    }\n\n    // Funciones para manejar la visibilidad de los gráficos\n    function showChart(chartId) {\n      const showAll = document.getElementById('showAll').checked;\n      if (showAll) {\n        document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'block');\n      } else {\n        document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'none');\n        document.getElementById(chartId).style.display = 'block';\n      }\n    }\n\n    function toggleShowAll() {\n      const showAll = document.getElementById('showAll').checked;\n      if (showAll) {\n        document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'block');\n      } else {\n        showChart('messagesPerChannel');\n      }\n    }\n\n    // Funciones para aplicar y reiniciar el filtro de fecha\n    function applyFilter() {\n      processCSV();\n    }\n\n    function resetFilter() {\n      document.getElementById('startDate').value = '';\n      document.getElementById('endDate').value = '';\n      // Al resetear, marcamos "All Time" por defecto\n      document.getElementById('allTime').checked = true;\n      processCSV();\n    }\n  </script>\n</body>\n</html>
