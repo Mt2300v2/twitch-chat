@@ -11,10 +11,11 @@
       color: #e0e0e0;
       font-family: Arial, sans-serif;
       text-align: center;
+      padding: 20px;
     }
     button {
-      margin: 10px;
-      padding: 10px 20px;
+      margin: 5px;
+      padding: 8px 16px;
       background-color: #1f1f1f;
       color: #e0e0e0;
       border: none;
@@ -24,6 +25,17 @@
     button:hover {
       background-color: #333;
     }
+    input[type="date"] {
+      padding: 5px;
+      margin: 0 5px;
+      border-radius: 4px;
+      border: 1px solid #333;
+      background-color: #1e1e1e;
+      color: #e0e0e0;
+    }
+    label {
+      margin: 0 10px;
+    }
     canvas {
       display: none;
       max-width: 800px;
@@ -32,24 +44,48 @@
       border: 1px solid #333;
       padding: 10px;
     }
+    #chartButtons {
+      margin-bottom: 20px;
+    }
+    #filterArea {
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
   <h1>Twitch Chat Statistics</h1>
-  <div>
-    <button onclick="showChart('messagesPerChannel')">Messages per Channel</button>
-    <button onclick="showChart('topUsers')">Top Active Users</button>
-    <button onclick="showChart('messagesOverTime')">Messages Over Time</button>
-    <button onclick="showChart('uniqueUsersPerChannel')">Unique Users per Channel</button>
-    <button onclick="showChart('avgMsgLengthPerChannel')">Avg Message Length per Channel</button>
-    <button onclick="showChart('messagesByHour')">Messages by Hour</button>
-    <button onclick="showChart('messagesByDay')">Messages by Day of Week</button>
-    <button onclick="showChart('userFreqDistribution')">User Frequency Distribution</button>
-    <button onclick="showChart('channelContribution')">Channel Contribution</button>
-    <button onclick="showChart('cumulativeMessagesOverTime')">Cumulative Messages Over Time</button>
+
+  <!-- Filtro de fecha -->
+  <div id="filterArea">
+    <label for="startDate">Start Date:</label>
+    <input type="date" id="startDate" />
+    <label for="endDate">End Date:</label>
+    <input type="date" id="endDate" />
+    <button onclick="applyFilter()">Apply Filter</button>
+    <button onclick="resetFilter()">Reset Filter</button>
+    <label><input type="checkbox" id="showAll" onchange="toggleShowAll()" /> Show All Graphs</label>
   </div>
-  
-  <!-- Canvases for each chart -->
+
+  <!-- Botones para cada gráfico -->
+  <div id="chartButtons">
+    <button onclick="showChart('messagesPerChannel')">1. Messages per Channel</button>
+    <button onclick="showChart('topUsers')">2. Top Active Users</button>
+    <button onclick="showChart('messagesOverTime')">3. Messages Over Time</button>
+    <button onclick="showChart('uniqueUsersPerChannel')">4. Unique Users per Channel</button>
+    <button onclick="showChart('avgMsgLengthPerChannel')">5. Avg Message Length per Channel</button>
+    <button onclick="showChart('messagesByHour')">6. Messages by Hour</button>
+    <button onclick="showChart('messagesByDay')">7. Messages by Day</button>
+    <button onclick="showChart('userFreqDistribution')">8. User Frequency Distribution</button>
+    <button onclick="showChart('channelContribution')">9. Channel Contribution</button>
+    <button onclick="showChart('cumulativeMessagesOverTime')">10. Cumulative Messages Over Time</button>
+    <button onclick="showChart('avgMsgLengthOverTime')">11. Avg Message Length Over Time</button>
+    <button onclick="showChart('topChannelsByUniqueUsers')">12. Top Channels by Unique Users</button>
+    <button onclick="showChart('messageLengthDistribution')">13. Message Length Distribution</button>
+    <button onclick="showChart('cumulativeUniqueUsersOverTime')">14. Cumulative Unique Users Over Time</button>
+    <button onclick="showChart('scatterTotalVsUnique')">15. Total vs Unique (Scatter)</button>
+  </div>
+
+  <!-- 15 Canvas para los gráficos -->
   <canvas id="messagesPerChannel"></canvas>
   <canvas id="topUsers"></canvas>
   <canvas id="messagesOverTime"></canvas>
@@ -60,27 +96,59 @@
   <canvas id="userFreqDistribution"></canvas>
   <canvas id="channelContribution"></canvas>
   <canvas id="cumulativeMessagesOverTime"></canvas>
+  <canvas id="avgMsgLengthOverTime"></canvas>
+  <canvas id="topChannelsByUniqueUsers"></canvas>
+  <canvas id="messageLengthDistribution"></canvas>
+  <canvas id="cumulativeUniqueUsersOverTime"></canvas>
+  <canvas id="scatterTotalVsUnique"></canvas>
 
   <script>
+    // Variable global para guardar gráficos y evitar duplicados
+    let charts = {};
+
+    // Al cargar la página, mostramos el primer gráfico
+    document.addEventListener('DOMContentLoaded', () => {
+      processCSV();
+      showChart('messagesPerChannel');
+    });
+
+    // Función para obtener y filtrar datos
     async function fetchData() {
       const response = await fetch('https://raw.githubusercontent.com/Mt2300v2/twitch-chat/refs/heads/main/chat_logs.csv');
       const text = await response.text();
-      // Separamos por línea y luego por coma.
       return text.split('\n').map(line => line.split(','));
     }
 
     async function processCSV() {
+      // Eliminar gráficos existentes si hay (para re-procesar con filtros)
+      for (let key in charts) {
+        if (charts[key]) {
+          charts[key].destroy();
+        }
+      }
+      charts = {};
+
       const data = await fetchData();
-      
-      // Inicializamos las estructuras de datos para cada gráfico
+
+      // Leer filtros de fecha
+      let startDateInput = document.getElementById('startDate').value;
+      let endDateInput = document.getElementById('endDate').value;
+      let startDate = startDateInput ? new Date(startDateInput) : null;
+      let endDate = endDateInput ? new Date(endDateInput) : null;
+
+      // Inicialización de estructuras de datos
       const channelCounts = {};
       const userCounts = {};
-      const messagesOverTime = {}; // Por día
+      const messagesOverTime = {}; // diario
       const uniqueUsersPerChannel = {};
-      const totalMsgLength = {}; // Suma de longitudes de mensaje por canal
-      const msgCountForAvg = {}; // Conteo de mensajes por canal (para promedio)
-      const messagesByHour = {}; // 0 a 23
-      const messagesByDay = {}; // Por día de la semana
+      const totalMsgLength = {};
+      const msgCountForAvg = {};
+      const messagesByHour = {};
+      const messagesByDay = {};
+      const avgMsgLengthOverTimeTotals = {}; // por día
+      const avgMsgLengthOverTimeCount = {};
+      const uniqueUsersOverTime = {}; // para cada día: set de usuarios
+      const messageLengths = []; // para histograma
 
       data.forEach(row => {
         if (row.length < 4) return;
@@ -90,156 +158,164 @@
         let message = row[3].trim();
         if (!timestamp) return;
 
-        // Gráfico 1: Mensajes por canal
+        let rowDateObj = new Date(timestamp);
+        // Aplicar filtro de fecha si se estableció
+        if ((startDate && rowDateObj < startDate) || (endDate && rowDateObj > endDate)) {
+          return;
+        }
+        let dateOnly = timestamp.split('T')[0];
+
+        // 1. Mensajes por canal
         channelCounts[channel] = (channelCounts[channel] || 0) + 1;
-        
-        // Gráfico 2: Actividad de usuarios
+
+        // 2. Usuarios activos
         userCounts[user] = (userCounts[user] || 0) + 1;
-        
-        // Gráfico 3: Mensajes a lo largo del tiempo (por día)
-        let date = timestamp.split('T')[0];
-        messagesOverTime[date] = (messagesOverTime[date] || 0) + 1;
-        
-        // Gráfico 4: Usuarios únicos por canal
+
+        // 3. Mensajes a lo largo del tiempo (diarios)
+        messagesOverTime[dateOnly] = (messagesOverTime[dateOnly] || 0) + 1;
+
+        // 4. Usuarios únicos por canal
         if (!uniqueUsersPerChannel[channel]) uniqueUsersPerChannel[channel] = new Set();
         uniqueUsersPerChannel[channel].add(user);
-        
-        // Gráfico 5: Promedio de longitud de mensaje por canal
-        let msgLen = message.length;
-        totalMsgLength[channel] = (totalMsgLength[channel] || 0) + msgLen;
+
+        // 5. Promedio de longitud de mensaje por canal
+        let len = message.length;
+        totalMsgLength[channel] = (totalMsgLength[channel] || 0) + len;
         msgCountForAvg[channel] = (msgCountForAvg[channel] || 0) + 1;
-        
-        // Gráfico 6: Mensajes por hora del día
-        let hour = new Date(timestamp).getHours();
-        messagesByHour[hour] = (messagesByHour[hour] || 0) + 1;
-        
-        // Gráfico 7: Mensajes por día de la semana
-        let dayIndex = new Date(timestamp).getDay(); // 0: Domingo, 6: Sábado
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+        // 6. Mensajes por hora
+        let hr = rowDateObj.getHours();
+        messagesByHour[hr] = (messagesByHour[hr] || 0) + 1;
+
+        // 7. Mensajes por día de la semana
+        let dayIndex = rowDateObj.getDay();
+        const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
         let dayName = dayNames[dayIndex];
         messagesByDay[dayName] = (messagesByDay[dayName] || 0) + 1;
+
+        // 11. Promedio de longitud de mensaje a lo largo del tiempo (por día)
+        avgMsgLengthOverTimeTotals[dateOnly] = (avgMsgLengthOverTimeTotals[dateOnly] || 0) + len;
+        avgMsgLengthOverTimeCount[dateOnly] = (avgMsgLengthOverTimeCount[dateOnly] || 0) + 1;
+
+        // 14. Usuarios únicos acumulativos a lo largo del tiempo
+        if (!uniqueUsersOverTime[dateOnly]) uniqueUsersOverTime[dateOnly] = new Set();
+        uniqueUsersOverTime[dateOnly].add(user);
+
+        // 13. Longitud de mensaje (para histograma)
+        messageLengths.push(len);
       });
 
-      // Convertir sets a conteos en gráfico 4
-      for (let channel in uniqueUsersPerChannel) {
-        uniqueUsersPerChannel[channel] = uniqueUsersPerChannel[channel].size;
+      // Convertir sets a conteos para gráficos 4 y 15
+      for (let ch in uniqueUsersPerChannel) {
+        uniqueUsersPerChannel[ch] = uniqueUsersPerChannel[ch].size;
       }
 
-      // Calcular promedio de longitud de mensaje (Gráfico 5)
+      // 5. Calcular promedio de longitud de mensaje por canal
       const avgMsgLengthPerChannel = {};
-      for (let channel in totalMsgLength) {
-        avgMsgLengthPerChannel[channel] = totalMsgLength[channel] / msgCountForAvg[channel];
+      for (let ch in totalMsgLength) {
+        avgMsgLengthPerChannel[ch] = totalMsgLength[ch] / msgCountForAvg[ch];
       }
 
-      // Gráfico 8: Distribución de frecuencia de mensajes por usuario (histograma)
-      const maxUserCount = Math.max(...Object.values(userCounts));
-      const binCount = 10;
-      const binWidth = Math.ceil(maxUserCount / binCount);
-      const bins = Array(binCount).fill(0);
-      for (let user in userCounts) {
-        let count = userCounts[user];
-        let binIndex = Math.min(Math.floor(count / binWidth), binCount - 1);
-        bins[binIndex]++;
+      // 11. Promedio de longitud de mensaje a lo largo del tiempo
+      const avgMsgLengthOverTime = {};
+      for (let date in avgMsgLengthOverTimeTotals) {
+        avgMsgLengthOverTime[date] = avgMsgLengthOverTimeTotals[date] / avgMsgLengthOverTimeCount[date];
       }
+
+      // 12. Top 10 canales por usuarios únicos
+      let topChannelsByUniqueUsers = Object.entries(uniqueUsersPerChannel)
+        .sort((a,b) => b[1] - a[1])
+        .slice(0, 10);
+      const topChannelsByUniqueUsersData = {
+        labels: topChannelsByUniqueUsers.map(e => e[0]),
+        data: topChannelsByUniqueUsers.map(e => e[1])
+      };
+
+      // 13. Distribución de longitud de mensaje (histograma)
+      let maxLen = Math.max(...messageLengths);
+      const binCount = 10;
+      const binWidth = Math.ceil(maxLen / binCount);
+      let bins = Array(binCount).fill(0);
+      messageLengths.forEach(len => {
+        let binIndex = Math.min(Math.floor(len / binWidth), binCount - 1);
+        bins[binIndex]++;
+      });
       const binLabels = bins.map((_, i) => `${i * binWidth} - ${((i + 1) * binWidth) - 1}`);
 
-      // Gráfico 9: Contribución de canales (Pie chart: top 10 y el resto agrupado)
+      // 14. Usuarios únicos acumulativos a lo largo del tiempo
+      const sortedDates = Object.keys(messagesOverTime).sort();
+      let cumulativeUnique = new Set();
+      const cumulativeUniqueUsers = sortedDates.map(date => {
+        // Aquí, para cada fecha, unimos el conjunto actual con los usuarios de esa fecha
+        uniqueUsersOverTime[date].forEach(u => cumulativeUnique.add(u));
+        return cumulativeUnique.size;
+      });
+
+      // 15. Scatter: Total de mensajes vs Usuarios únicos por canal
+      const scatterData = Object.keys(channelCounts).map(ch => ({
+        x: channelCounts[ch],
+        y: uniqueUsersPerChannel[ch],
+        label: ch
+      }));
+
+      // Funciones auxiliares para estructurar datos
+      function getSortedLabelsData(dataObj, limit) {
+        let entries = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
+        if (limit) {
+          entries = entries.slice(0, limit);
+        }
+        return { labels: entries.map(e => e[0]), data: entries.map(e => e[1]) };
+      }
+      
+      function getSequentialData(dataObj, total, labelFunc) {
+        const labels = [];
+        const data = [];
+        for (let i = 0; i < total; i++) {
+          labels.push(labelFunc(i));
+          data.push(dataObj[i] || 0);
+        }
+        return { labels, data };
+      }
+      
+      function getLabelsDataFromObject(dataObj) {
+        const labels = Object.keys(dataObj);
+        const data = Object.values(dataObj);
+        return { labels, data };
+      }
+
+      // Crear gráficos usando la función genérica
+      createChart('messagesPerChannel', 'bar', 'Messages per Channel', getSortedLabelsData(channelCounts, 20));
+      createChart('topUsers', 'bar', 'Top Active Users', getSortedLabelsData(userCounts, 10));
+      createChart('messagesOverTime', 'line', 'Messages Over Time', getSortedLabelsData(messagesOverTime));
+      createChart('uniqueUsersPerChannel', 'bar', 'Unique Users per Channel', getSortedLabelsData(uniqueUsersPerChannel, 20));
+      createChart('avgMsgLengthPerChannel', 'bar', 'Avg Message Length per Channel', getSortedLabelsData(avgMsgLengthPerChannel, 20));
+      createChart('messagesByHour', 'bar', 'Messages by Hour', getSequentialData(messagesByHour, 24, i => i.toString()));
+      
+      // Para mensajes por día de la semana, forzamos el orden
+      const daysOrder = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const messagesByDayOrdered = {};
+      daysOrder.forEach(day => { messagesByDayOrdered[day] = messagesByDay[day] || 0; });
+      createChart('messagesByDay', 'bar', 'Messages by Day', getLabelsDataFromObject(messagesByDayOrdered));
+      
+      // 8. Distribución de frecuencia de mensajes por usuario (histograma de userCounts)
+      const maxUserCount = Math.max(...Object.values(userCounts));
+      const userBinCount = 10;
+      const userBinWidth = Math.ceil(maxUserCount / userBinCount);
+      let userBins = Array(userBinCount).fill(0);
+      Object.values(userCounts).forEach(count => {
+        let binIndex = Math.min(Math.floor(count / userBinWidth), userBinCount - 1);
+        userBins[binIndex]++;
+      });
+      const userBinLabels = userBins.map((_, i) => `${i * userBinWidth} - ${((i + 1) * userBinWidth) - 1}`);
+      createChart('userFreqDistribution', 'bar', 'User Frequency Distribution', { labels: userBinLabels, data: userBins });
+      
+      // 9. Contribución de canales (Pie chart: top 10 + resto)
       const sortedChannels = Object.entries(channelCounts).sort((a, b) => b[1] - a[1]);
       const top10 = sortedChannels.slice(0, 10);
       const others = sortedChannels.slice(10).reduce((acc, cur) => acc + cur[1], 0);
       const channelContributionLabels = top10.map(e => e[0]).concat(['Others']);
       const channelContributionData = top10.map(e => e[1]).concat([others]);
-
-      // Gráfico 10: Mensajes acumulativos a lo largo del tiempo
-      const sortedDates = Object.keys(messagesOverTime).sort();
-      let cumulative = 0;
-      const cumulativeData = sortedDates.map(date => {
-        cumulative += messagesOverTime[date];
-        return cumulative;
-      });
-
-      // Crear gráficos usando una función genérica
-      createChart('messagesPerChannel', 'bar', 'Messages per Channel', getSortedLabelsData(channelCounts, 20));
-      createChart('topUsers', 'bar', 'Top Active Users', getSortedLabelsData(userCounts, 10));
-      createChart('messagesOverTime', 'line', 'Messages Over Time', getSortedLabelsData(messagesOverTime));
-      createChart('uniqueUsersPerChannel', 'bar', 'Unique Users per Channel', getSortedLabelsData(uniqueUsersPerChannel, 20));
-      createChart('avgMsgLengthPerChannel', 'bar', 'Average Message Length per Channel', getSortedLabelsData(avgMsgLengthPerChannel, 20));
-      createChart('messagesByHour', 'bar', 'Messages by Hour of Day', getSequentialData(messagesByHour, 24, i => i.toString()));
-      
-      // Para los días de la semana, ordenamos manualmente
-      const daysOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const messagesByDayOrdered = {};
-      daysOrder.forEach(day => { messagesByDayOrdered[day] = messagesByDay[day] || 0; });
-      createChart('messagesByDay', 'bar', 'Messages by Day of Week', getLabelsDataFromObject(messagesByDayOrdered));
-      
-      createChart('userFreqDistribution', 'bar', 'User Frequency Distribution', { labels: binLabels, data: bins });
       createChart('channelContribution', 'pie', 'Channel Contribution', { labels: channelContributionLabels, data: channelContributionData });
-      createChart('cumulativeMessagesOverTime', 'line', 'Cumulative Messages Over Time', { labels: sortedDates, data: cumulativeData });
-    }
-
-    // Funciones auxiliares para estructurar datos
-    function getSortedLabelsData(dataObj, limit) {
-      let entries = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
-      if (limit) {
-        entries = entries.slice(0, limit);
-      }
-      return { labels: entries.map(e => e[0]), data: entries.map(e => e[1]) };
-    }
-
-    function getSequentialData(dataObj, total, labelFunc) {
-      const labels = [];
-      const data = [];
-      for (let i = 0; i < total; i++) {
-        labels.push(labelFunc(i));
-        data.push(dataObj[i] || 0);
-      }
-      return { labels, data };
-    }
-
-    function getLabelsDataFromObject(dataObj) {
-      const labels = Object.keys(dataObj);
-      const data = Object.values(dataObj);
-      return { labels, data };
-    }
-
-    // Función para generar colores dinámicamente
-    function generateColors(count) {
-      const colors = [];
-      for (let i = 0; i < count; i++) {
-        const hue = i * (360 / count);
-        colors.push(`hsl(${hue}, 70%, 50%)`);
-      }
-      return colors;
-    }
-
-    // Función genérica para crear un gráfico
-    function createChart(canvasId, chartType, label, chartData) {
-      const ctx = document.getElementById(canvasId).getContext('2d');
-      new Chart(ctx, {
-        type: chartType,
-        data: {
-          labels: chartData.labels,
-          datasets: [{
-            label: label,
-            data: chartData.data,
-            backgroundColor: chartType === 'pie' ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 0.5)',
-            borderColor: chartType === 'pie' ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 1)',
-            borderWidth: 1,
-            fill: chartType === 'line' ? false : true
-          }]
-        },
-        options: { responsive: true }
-      });
-    }
-
-    // Función para mostrar un gráfico y ocultar los demás
-    function showChart(chartId) {
-      document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'none');
-      document.getElementById(chartId).style.display = 'block';
-    }
-
-    // Inicia el procesamiento cuando la página se carga
-    processCSV();
-  </script>
-</body>
-</html>
+      
+      // 10. Mensajes acumulativos a lo largo del tiempo
+      const cumulativeMessages = [];\n      let cumul = 0;\n      sortedDates.forEach(date => {\n        cumul += messagesOverTime[date];\n        cumulativeMessages.push(cumul);\n      });\n      createChart('cumulativeMessagesOverTime', 'line', 'Cumulative Messages Over Time', { labels: sortedDates, data: cumulativeMessages });\n\n      // 11. Promedio de longitud de mensaje a lo largo del tiempo\n      createChart('avgMsgLengthOverTime', 'line', 'Avg Message Length Over Time', getSortedLabelsData(avgMsgLengthOverTime));\n\n      // 12. Top 10 canales por usuarios únicos\n      createChart('topChannelsByUniqueUsers', 'bar', 'Top Channels by Unique Users', topChannelsByUniqueUsersData);\n\n      // 13. Distribución de longitud de mensaje (Histograma)\n      createChart('messageLengthDistribution', 'bar', 'Message Length Distribution', { labels: binLabels, data: bins });\n\n      // 14. Usuarios únicos acumulativos a lo largo del tiempo\n      createChart('cumulativeUniqueUsersOverTime', 'line', 'Cumulative Unique Users Over Time', { labels: sortedDates, data: cumulativeUniqueUsers });\n\n      // 15. Scatter: Total de mensajes vs Usuarios únicos\n      createScatterChart('scatterTotalVsUnique', 'Total vs Unique Users', scatterData);\n    }\n\n    // Función genérica para crear gráficos (excepto scatter)\n    function createChart(canvasId, chartType, chartLabel, chartData) {\n      const ctx = document.getElementById(canvasId).getContext('2d');\n      const config = {\n        type: chartType,\n        data: {\n          labels: chartData.labels,\n          datasets: [{\n            label: chartLabel,\n            data: chartData.data,\n            backgroundColor: (chartType === 'pie') ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 0.5)',\n            borderColor: (chartType === 'pie') ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 1)',\n            borderWidth: 1,\n            fill: (chartType === 'line') ? false : true\n          }]\n        },\n        options: { responsive: true }\n      };\n      charts[canvasId] = new Chart(ctx, config);\n    }\n\n    // Función específica para gráfico scatter (15)\n    function createScatterChart(canvasId, chartLabel, scatterData) {\n      const ctx = document.getElementById(canvasId).getContext('2d');\n      const config = {\n        type: 'scatter',\n        data: {\n          datasets: [{\n            label: chartLabel,\n            data: scatterData,\n            backgroundColor: 'rgba(255, 99, 132, 0.5)',\n            borderColor: 'rgba(255, 99, 132, 1)',\n            pointRadius: 5\n          }]\n        },\n        options: {\n          responsive: true,\n          scales: {\n            x: {\n              title: { display: true, text: 'Total Messages' }\n            },\n            y: {\n              title: { display: true, text: 'Unique Users' }\n            }\n          }\n        }\n      };\n      charts[canvasId] = new Chart(ctx, config);\n    }\n\n    // Función para generar colores dinámicamente\n    function generateColors(count) {\n      const colors = [];\n      for (let i = 0; i < count; i++) {\n        const hue = i * (360 / count);\n        colors.push(`hsl(${hue}, 70%, 50%)`);\n      }\n      return colors;\n    }\n\n    // Funciones para manejar la visibilidad de los gráficos\n    function showChart(chartId) {\n      const showAll = document.getElementById('showAll').checked;\n      if (showAll) {\n        document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'block');\n      } else {\n        document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'none');\n        document.getElementById(chartId).style.display = 'block';\n      }\n    }\n\n    function toggleShowAll() {\n      const showAll = document.getElementById('showAll').checked;\n      if (showAll) {\n        document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'block');\n      } else {\n        // Si se desactiva, se muestra el primero por defecto\n        showChart('messagesPerChannel');\n      }\n    }\n\n    // Funciones para aplicar y reiniciar el filtro de fecha\n    function applyFilter() {\n      processCSV();\n    }\n\n    function resetFilter() {\n      document.getElementById('startDate').value = '';\n      document.getElementById('endDate').value = '';\n      processCSV();\n    }\n  </script>\n</body>\n</html>
