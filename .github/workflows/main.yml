@@ -8,13 +8,13 @@ on:
 jobs:
   log-chat:
     runs-on: ubuntu-latest
-    timeout-minutes: 55  # Stay under 1h limit
+    timeout-minutes: 55
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        persist-credentials: false
+        fetch-depth: 0  # Required for git history
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -24,12 +24,6 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install gitpython
-
-    - name: Configure Git
-      run: |
-        git config --global user.name "GitHub Actions"
-        git config --global user.email "actions@github.com"
 
     - name: Run Chat Logger
       run: |
@@ -37,11 +31,19 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload Final Logs
+    - name: Commit and Push Changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add chat_logs.csv
+        git commit -m "Update chat logs [skip ci]" || echo "No changes to commit"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload Artifact
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: chat-logs
+        name: chat-logs-${{ github.run_id }}
         path: chat_logs.csv
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
