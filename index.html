@@ -5,11 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Twitch Chat Stats</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #121212;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        canvas {
+            display: none;
+            max-width: 800px;
+            margin: auto;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: #1f1f1f;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #333;
+        }
+    </style>
 </head>
 <body>
     <h1>Twitch Chat Statistics</h1>
+    <div>
+        <button onclick="showChart('messagesPerChannel')">Messages per Channel</button>
+        <button onclick="showChart('topUsers')">Top Active Users</button>
+        <button onclick="showChart('messagesOverTime')">Messages Over Time</button>
+        <button onclick="showChart('uniqueUsersPerChannel')">Unique Users per Channel</button>
+    </div>
     <canvas id="messagesPerChannel"></canvas>
     <canvas id="topUsers"></canvas>
+    <canvas id="messagesOverTime"></canvas>
+    <canvas id="uniqueUsersPerChannel"></canvas>
     <script>
         async function fetchData() {
             const response = await fetch('https://raw.githubusercontent.com/Mt2300v2/twitch-chat/refs/heads/main/chat_logs.csv');
@@ -21,16 +53,30 @@
             const data = await fetchData();
             const channelCounts = {};
             const userCounts = {};
+            const messagesOverTime = {};
+            const uniqueUsersPerChannel = {};
 
             data.forEach(row => {
                 if (row.length < 4) return;
-                const [, channel, user] = row;
+                const [timestamp, channel, user] = row;
                 channelCounts[channel] = (channelCounts[channel] || 0) + 1;
                 userCounts[user] = (userCounts[user] || 0) + 1;
+                
+                const time = timestamp.split('T')[0];
+                messagesOverTime[time] = (messagesOverTime[time] || 0) + 1;
+                
+                if (!uniqueUsersPerChannel[channel]) uniqueUsersPerChannel[channel] = new Set();
+                uniqueUsersPerChannel[channel].add(user);
+            });
+
+            Object.keys(uniqueUsersPerChannel).forEach(channel => {
+                uniqueUsersPerChannel[channel] = uniqueUsersPerChannel[channel].size;
             });
 
             createChart('messagesPerChannel', 'Messages per Channel', channelCounts);
             createChart('topUsers', 'Top Active Users', userCounts, 10);
+            createChart('messagesOverTime', 'Messages Over Time', messagesOverTime);
+            createChart('uniqueUsersPerChannel', 'Unique Users per Channel', uniqueUsersPerChannel);
         }
 
         function createChart(canvasId, label, data, limit = 20) {
@@ -47,6 +93,11 @@
                 },
                 options: { responsive: true }
             });
+        }
+
+        function showChart(chartId) {
+            document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'none');
+            document.getElementById(chartId).style.display = 'block';
         }
 
         processCSV();
