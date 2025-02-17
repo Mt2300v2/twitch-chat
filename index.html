@@ -47,6 +47,8 @@
     <button onclick="showChart('userFreqDistribution')">User Frequency Distribution</button>
     <button onclick="showChart('channelContribution')">Channel Contribution</button>
     <button onclick="showChart('cumulativeMessagesOverTime')">Cumulative Messages Over Time</button>
+    <button onclick="showChart('mostRepeatedWords')">Most Repeated Words</button>
+    <button onclick="showChart('leastRepeatedWords')">Least Repeated Words</button>
   </div>
   
   <!-- Canvases for each chart -->
@@ -60,27 +62,30 @@
   <canvas id="userFreqDistribution"></canvas>
   <canvas id="channelContribution"></canvas>
   <canvas id="cumulativeMessagesOverTime"></canvas>
+  <canvas id="mostRepeatedWords"></canvas>
+  <canvas id="leastRepeatedWords"></canvas>
 
   <script>
     async function fetchData() {
       const response = await fetch('https://raw.githubusercontent.com/Mt2300v2/twitch-chat/refs/heads/main/chat_logs.csv');
       const text = await response.text();
-      // Separamos por línea y luego por coma.
+      // Split by line then by comma.
       return text.split('\n').map(line => line.split(','));
     }
 
     async function processCSV() {
       const data = await fetchData();
       
-      // Inicializamos las estructuras de datos para cada gráfico
+      // Initialize data structures for each chart
       const channelCounts = {};
       const userCounts = {};
-      const messagesOverTime = {}; // Por día
+      const messagesOverTime = {}; // by day
       const uniqueUsersPerChannel = {};
-      const totalMsgLength = {}; // Suma de longitudes de mensaje por canal
-      const msgCountForAvg = {}; // Conteo de mensajes por canal (para promedio)
-      const messagesByHour = {}; // 0 a 23
-      const messagesByDay = {}; // Por día de la semana
+      const totalMsgLength = {}; // total message length per channel
+      const msgCountForAvg = {}; // count of messages per channel (for average)
+      const messagesByHour = {}; // 0 to 23
+      const messagesByDay = {}; // by day of week
+      const wordCounts = {}; // for word frequency
 
       data.forEach(row => {
         if (row.length < 4) return;
@@ -90,48 +95,56 @@
         let message = row[3].trim();
         if (!timestamp) return;
 
-        // Gráfico 1: Mensajes por canal
+        // Chart 1: Messages per channel
         channelCounts[channel] = (channelCounts[channel] || 0) + 1;
         
-        // Gráfico 2: Actividad de usuarios
+        // Chart 2: Active users
         userCounts[user] = (userCounts[user] || 0) + 1;
         
-        // Gráfico 3: Mensajes a lo largo del tiempo (por día)
+        // Chart 3: Messages over time (by day)
         let date = timestamp.split('T')[0];
         messagesOverTime[date] = (messagesOverTime[date] || 0) + 1;
         
-        // Gráfico 4: Usuarios únicos por canal
+        // Chart 4: Unique users per channel
         if (!uniqueUsersPerChannel[channel]) uniqueUsersPerChannel[channel] = new Set();
         uniqueUsersPerChannel[channel].add(user);
         
-        // Gráfico 5: Promedio de longitud de mensaje por canal
+        // Chart 5: Average message length per channel
         let msgLen = message.length;
         totalMsgLength[channel] = (totalMsgLength[channel] || 0) + msgLen;
         msgCountForAvg[channel] = (msgCountForAvg[channel] || 0) + 1;
         
-        // Gráfico 6: Mensajes por hora del día
+        // Chart 6: Messages by hour of day
         let hour = new Date(timestamp).getHours();
         messagesByHour[hour] = (messagesByHour[hour] || 0) + 1;
         
-        // Gráfico 7: Mensajes por día de la semana
-        let dayIndex = new Date(timestamp).getDay(); // 0: Domingo, 6: Sábado
+        // Chart 7: Messages by day of the week
+        let dayIndex = new Date(timestamp).getDay(); // 0: Sunday, 6: Saturday
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
         let dayName = dayNames[dayIndex];
         messagesByDay[dayName] = (messagesByDay[dayName] || 0) + 1;
+        
+        // Process words for frequency counts (convert to lowercase and match word characters)
+        let words = message.toLowerCase().match(/\b\w+\b/g);
+        if (words) {
+          words.forEach(word => {
+            wordCounts[word] = (wordCounts[word] || 0) + 1;
+          });
+        }
       });
 
-      // Convertir sets a conteos en gráfico 4
+      // Convert sets to counts for unique users per channel
       for (let channel in uniqueUsersPerChannel) {
         uniqueUsersPerChannel[channel] = uniqueUsersPerChannel[channel].size;
       }
 
-      // Calcular promedio de longitud de mensaje (Gráfico 5)
+      // Calculate average message length per channel (Chart 5)
       const avgMsgLengthPerChannel = {};
       for (let channel in totalMsgLength) {
         avgMsgLengthPerChannel[channel] = totalMsgLength[channel] / msgCountForAvg[channel];
       }
 
-      // Gráfico 8: Distribución de frecuencia de mensajes por usuario (histograma)
+      // Chart 8: User frequency distribution (histogram)
       const maxUserCount = Math.max(...Object.values(userCounts));
       const binCount = 10;
       const binWidth = Math.ceil(maxUserCount / binCount);
@@ -143,14 +156,14 @@
       }
       const binLabels = bins.map((_, i) => `${i * binWidth} - ${((i + 1) * binWidth) - 1}`);
 
-      // Gráfico 9: Contribución de canales (Pie chart: top 10 y el resto agrupado)
+      // Chart 9: Channel contribution (Pie chart: top 10 and the rest grouped)
       const sortedChannels = Object.entries(channelCounts).sort((a, b) => b[1] - a[1]);
       const top10 = sortedChannels.slice(0, 10);
       const others = sortedChannels.slice(10).reduce((acc, cur) => acc + cur[1], 0);
       const channelContributionLabels = top10.map(e => e[0]).concat(['Others']);
       const channelContributionData = top10.map(e => e[1]).concat([others]);
 
-      // Gráfico 10: Mensajes acumulativos a lo largo del tiempo
+      // Chart 10: Cumulative messages over time
       const sortedDates = Object.keys(messagesOverTime).sort();
       let cumulative = 0;
       const cumulativeData = sortedDates.map(date => {
@@ -158,7 +171,19 @@
         return cumulative;
       });
 
-      // Crear gráficos usando una función genérica
+      // New Chart 11: Most Repeated Words
+      const sortedWords = Object.entries(wordCounts).sort((a, b) => b[1] - a[1]);
+      const mostRepeated = sortedWords.slice(0, 10);
+      
+      // New Chart 12: Least Repeated Words (only include words that appear more than once)
+      let leastRepeatedCandidates = Object.entries(wordCounts).filter(([word, count]) => count > 1);
+      if (leastRepeatedCandidates.length === 0) {
+        leastRepeatedCandidates = Object.entries(wordCounts);
+      }
+      const sortedLeastRepeated = leastRepeatedCandidates.sort((a, b) => a[1] - b[1]);
+      const leastRepeated = sortedLeastRepeated.slice(0, 10);
+
+      // Create charts using a generic function
       createChart('messagesPerChannel', 'bar', 'Messages per Channel', getSortedLabelsData(channelCounts, 20));
       createChart('topUsers', 'bar', 'Top Active Users', getSortedLabelsData(userCounts, 10));
       createChart('messagesOverTime', 'line', 'Messages Over Time', getSortedLabelsData(messagesOverTime));
@@ -166,7 +191,7 @@
       createChart('avgMsgLengthPerChannel', 'bar', 'Average Message Length per Channel', getSortedLabelsData(avgMsgLengthPerChannel, 20));
       createChart('messagesByHour', 'bar', 'Messages by Hour of Day', getSequentialData(messagesByHour, 24, i => i.toString()));
       
-      // Para los días de la semana, ordenamos manualmente
+      // For days of the week, order manually
       const daysOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const messagesByDayOrdered = {};
       daysOrder.forEach(day => { messagesByDayOrdered[day] = messagesByDay[day] || 0; });
@@ -175,9 +200,14 @@
       createChart('userFreqDistribution', 'bar', 'User Frequency Distribution', { labels: binLabels, data: bins });
       createChart('channelContribution', 'pie', 'Channel Contribution', { labels: channelContributionLabels, data: channelContributionData });
       createChart('cumulativeMessagesOverTime', 'line', 'Cumulative Messages Over Time', { labels: sortedDates, data: cumulativeData });
+      createChart('mostRepeatedWords', 'bar', 'Most Repeated Words', { labels: mostRepeated.map(e => e[0]), data: mostRepeated.map(e => e[1]) });
+      createChart('leastRepeatedWords', 'bar', 'Least Repeated Words (min count > 1)', { labels: leastRepeated.map(e => e[0]), data: leastRepeated.map(e => e[1]) });
+
+      // Show the first chart by default
+      showChart('messagesPerChannel');
     }
 
-    // Funciones auxiliares para estructurar datos
+    // Helper functions to structure data for charts
     function getSortedLabelsData(dataObj, limit) {
       let entries = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
       if (limit) {
@@ -202,7 +232,7 @@
       return { labels, data };
     }
 
-    // Función para generar colores dinámicamente
+    // Function to generate dynamic colors
     function generateColors(count) {
       const colors = [];
       for (let i = 0; i < count; i++) {
@@ -212,7 +242,7 @@
       return colors;
     }
 
-    // Función genérica para crear un gráfico
+    // Generic function to create a chart
     function createChart(canvasId, chartType, label, chartData) {
       const ctx = document.getElementById(canvasId).getContext('2d');
       new Chart(ctx, {
@@ -232,13 +262,13 @@
       });
     }
 
-    // Función para mostrar un gráfico y ocultar los demás
+    // Function to display one chart and hide the others
     function showChart(chartId) {
       document.querySelectorAll('canvas').forEach(canvas => canvas.style.display = 'none');
       document.getElementById(chartId).style.display = 'block';
     }
 
-    // Inicia el procesamiento cuando la página se carga
+    // Start processing when the page loads
     processCSV();
   </script>
 </body>
