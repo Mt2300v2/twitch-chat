@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitch Chat Stats</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Twitch Chat Statistics</h1>
+    <canvas id="messagesPerChannel"></canvas>
+    <canvas id="topUsers"></canvas>
+    <script>
+        async function fetchData() {
+            const response = await fetch('https://raw.githubusercontent.com/Mt2300v2/twitch-chat/refs/heads/main/chat_logs.csv');
+            const text = await response.text();
+            return text.split('\n').map(line => line.split(','));
+        }
+
+        async function processCSV() {
+            const data = await fetchData();
+            const channelCounts = {};
+            const userCounts = {};
+
+            data.forEach(row => {
+                if (row.length < 4) return;
+                const [, channel, user] = row;
+                channelCounts[channel] = (channelCounts[channel] || 0) + 1;
+                userCounts[user] = (userCounts[user] || 0) + 1;
+            });
+
+            createChart('messagesPerChannel', 'Messages per Channel', channelCounts);
+            createChart('topUsers', 'Top Active Users', userCounts, 10);
+        }
+
+        function createChart(canvasId, label, data, limit = 20) {
+            const sortedEntries = Object.entries(data).sort((a, b) => b[1] - a[1]).slice(0, limit);
+            new Chart(document.getElementById(canvasId), {
+                type: 'bar',
+                data: {
+                    labels: sortedEntries.map(e => e[0]),
+                    datasets: [{
+                        label: label,
+                        data: sortedEntries.map(e => e[1]),
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)'
+                    }]
+                },
+                options: { responsive: true }
+            });
+        }
+
+        processCSV();
+    </script>
+</body>
+</html>
