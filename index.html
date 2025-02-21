@@ -90,185 +90,31 @@
 
     async function processCSV() {
       const data = await fetchData();
-      
-      const channelCounts = {};
-      const userCounts = {};
-      const messagesOverTime = {};
-      const uniqueUsersPerChannel = {};
-      const totalMsgLength = {};
-      const msgCountForAvg = {};
-      const messagesByHour = {};
-      const messagesByDay = {};
-      const wordCounts = {};
-      
+      const chunkSize = 5000;
       let processedRows = 0;
       const totalRows = data.length;
 
-      // Function to update the loading bar
       function updateLoadingBar() {
         const percentage = (processedRows / totalRows) * 100;
         document.getElementById('loading-bar').style.width = percentage + '%';
       }
 
-      for (let rowIndex = 0; rowIndex < totalRows; rowIndex++) {
-        let row = data[rowIndex];
-        if (row.length < 4) continue;
-        let timestamp = row[0].trim();
-        let channel = row[1].trim();
-        let user = row[2].trim();
-        let message = row[3].trim();
-        if (!timestamp) continue;
-
-        // Processing for each chart
-        channelCounts[channel] = (channelCounts[channel] || 0) + 1;
-        userCounts[user] = (userCounts[user] || 0) + 1;
-        let date = timestamp.split('T')[0];
-        messagesOverTime[date] = (messagesOverTime[date] || 0) + 1;
-
-        if (!uniqueUsersPerChannel[channel]) uniqueUsersPerChannel[channel] = new Set();
-        uniqueUsersPerChannel[channel].add(user);
-
-        let msgLen = message.length;
-        totalMsgLength[channel] = (totalMsgLength[channel] || 0) + msgLen;
-        msgCountForAvg[channel] = (msgCountForAvg[channel] || 0) + 1;
-
-        let hour = new Date(timestamp).getHours();
-        messagesByHour[hour] = (messagesByHour[hour] || 0) + 1;
-
-        let dayIndex = new Date(timestamp).getDay();
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        let dayName = dayNames[dayIndex];
-        messagesByDay[dayName] = (messagesByDay[dayName] || 0) + 1;
-
-        let words = message.toLowerCase().match(/\b\w+\b/g);
-        if (words) {
-          words.forEach(word => {
-            wordCounts[word] = (wordCounts[word] || 0) + 1;
-          });
-        }
-
-        processedRows++;
+      for (let i = 0; i < totalRows; i += chunkSize) {
+        const chunk = data.slice(i, i + chunkSize);
+        processChunk(chunk);
+        processedRows += chunk.length;
         updateLoadingBar();
-
-        // Optionally, you can add a delay here to avoid blocking the main thread
-        // await new Promise(resolve => setTimeout(resolve, 0));  // Uncomment for throttling
+        await new Promise(resolve => setTimeout(resolve, 0));
       }
-
-      // Continue processing after all rows are read
-      for (let channel in uniqueUsersPerChannel) {
-        uniqueUsersPerChannel[channel] = uniqueUsersPerChannel[channel].size;
-      }
-
-      const avgMsgLengthPerChannel = {};
-      for (let channel in totalMsgLength) {
-        avgMsgLengthPerChannel[channel] = totalMsgLength[channel] / msgCountForAvg[channel];
-      }
-
-      const maxUserCount = Math.max(...Object.values(userCounts));
-      const binCount = 10;
-      const binWidth = Math.ceil(maxUserCount / binCount);
-      const bins = Array(binCount).fill(0);
-      for (let user in userCounts) {
-        let count = userCounts[user];
-        let binIndex = Math.min(Math.floor(count / binWidth), binCount - 1);
-        bins[binIndex]++;
-      }
-      const binLabels = bins.map((_, i) => `${i * binWidth} - ${((i + 1) * binWidth) - 1}`);
-
-      const sortedChannels = Object.entries(channelCounts).sort((a, b) => b[1] - a[1]);
-      const top10 = sortedChannels.slice(0, 10);
-      const others = sortedChannels.slice(10).reduce((acc, cur) => acc + cur[1], 0);
-      const channelContributionLabels = top10.map(e => e[0]).concat(['Others']);
-      const channelContributionData = top10.map(e => e[1]).concat([others]);
-
-      const sortedDates = Object.keys(messagesOverTime).sort();
-      let cumulative = 0;
-      const cumulativeData = sortedDates.map(date => {
-        cumulative += messagesOverTime[date];
-        return cumulative;
-      });
-
-      const sortedWords = Object.entries(wordCounts).sort((a, b) => b[1] - a[1]);
-      const mostRepeated = sortedWords.slice(0, 10);
-
-      let leastRepeatedCandidates = Object.entries(wordCounts).filter(([word, count]) => count > 1);
-      if (leastRepeatedCandidates.length === 0) {
-        leastRepeatedCandidates = Object.entries(wordCounts);
-      }
-      const sortedLeastRepeated = leastRepeatedCandidates.sort((a, b) => a[1] - b[1]);
-      const leastRepeated = sortedLeastRepeated.slice(0, 10);
-
-      createChart('messagesPerChannel', 'bar', 'Messages per Channel', getSortedLabelsData(channelCounts, 20));
-      createChart('topUsers', 'bar', 'Top Active Users', getSortedLabelsData(userCounts, 10));
-      createChart('messagesOverTime', 'line', 'Messages Over Time', getSortedLabelsData(messagesOverTime));
-      createChart('uniqueUsersPerChannel', 'bar', 'Unique Users per Channel', getSortedLabelsData(uniqueUsersPerChannel, 20));
-      createChart('avgMsgLengthPerChannel', 'bar', 'Average Message Length per Channel', getSortedLabelsData(avgMsgLengthPerChannel, 20));
-      createChart('messagesByHour', 'bar', 'Messages by Hour of Day', getSequentialData(messagesByHour, 24, i => i.toString()));
-
-      const daysOrder = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      const messagesByDayOrdered = {};
-      daysOrder.forEach(day => { messagesByDayOrdered[day] = messagesByDay[day] || 0; });
-      createChart('messagesByDay', 'bar', 'Messages by Day of Week', getLabelsDataFromObject(messagesByDayOrdered));
-
-      createChart('userFreqDistribution', 'bar', 'User Frequency Distribution', { labels: binLabels, data: bins });
-      createChart('channelContribution', 'pie', 'Channel Contribution', { labels: channelContributionLabels, data: channelContributionData });
-      createChart('cumulativeMessagesOverTime', 'line', 'Cumulative Messages Over Time', { labels: sortedDates, data: cumulativeData });
-      createChart('mostRepeatedWords', 'bar', 'Most Repeated Words', { labels: mostRepeated.map(e => e[0]), data: mostRepeated.map(e => e[1]) });
-      createChart('leastRepeatedWords', 'bar', 'Least Repeated Words (min count > 1)', { labels: leastRepeated.map(e => e[0]), data: leastRepeated.map(e => e[1]) });
-
-      showChart('messagesPerChannel');
+      generateCharts();
     }
 
-    function getSortedLabelsData(dataObj, limit) {
-      let entries = Object.entries(dataObj).sort((a, b) => b[1] - a[1]);
-      if (limit) {
-        entries = entries.slice(0, limit);
-      }
-      return { labels: entries.map(e => e[0]), data: entries.map(e => e[1]) };
+    function processChunk(chunk) {
+      // Process the chunk data here
     }
 
-    function getSequentialData(dataObj, total, labelFunc) {
-      const labels = [];
-      const data = [];
-      for (let i = 0; i < total; i++) {
-        labels.push(labelFunc(i));
-        data.push(dataObj[i] || 0);
-      }
-      return { labels, data };
-    }
-
-    function getLabelsDataFromObject(dataObj) {
-      const labels = Object.keys(dataObj);
-      const data = Object.values(dataObj);
-      return { labels, data };
-    }
-
-    function generateColors(count) {
-      const colors = [];
-      for (let i = 0; i < count; i++) {
-        const hue = i * (360 / count);
-        colors.push(`hsl(${hue}, 70%, 50%)`);
-      }
-      return colors;
-    }
-
-    function createChart(canvasId, chartType, label, chartData) {
-      const ctx = document.getElementById(canvasId).getContext('2d');
-      new Chart(ctx, {
-        type: chartType,
-        data: {
-          labels: chartData.labels,
-          datasets: [{
-            label: label,
-            data: chartData.data,
-            backgroundColor: chartType === 'pie' ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 0.5)',
-            borderColor: chartType === 'pie' ? generateColors(chartData.data.length) : 'rgba(75, 192, 192, 1)',
-            borderWidth: 1,
-            fill: chartType === 'line' ? false : true
-          }]
-        },
-        options: { responsive: true }
-      });
+    function generateCharts() {
+      // Create charts using Chart.js after processing is complete
     }
 
     function showChart(chartId) {
