@@ -1,0 +1,46 @@
+name: Run Python Script and Commit Graphs
+
+on:
+  schedule:
+    # Runs every minute (note: GitHub may throttle scheduled workflows to a minimum interval)
+    - cron: "* * * * *"
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          # Ensure the token is available for pushing changes.
+          persist-credentials: true
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy matplotlib wordcloud
+
+      - name: Run the Python script
+        run: |
+          python main.py
+
+      - name: Commit generated graphs
+        run: |
+          # Configure Git for commits
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          # Add graph PNG files (adjust pattern if needed)
+          git add graph*.png
+          # Check if there are changes
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Update graphs $(date)"
+            git push
+          else
+            echo "No changes to commit."
+          fi
