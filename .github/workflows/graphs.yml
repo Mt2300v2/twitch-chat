@@ -28,7 +28,7 @@ jobs:
 
       - name: Run the Python script
         run: |
-          python main.py
+          python graphs.py
 
       - name: Commit generated graphs
         run: |
