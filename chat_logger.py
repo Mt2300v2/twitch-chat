@@ -10,9 +10,11 @@ HOST = "irc.chat.twitch.tv"
 PORT = 6667
 CHANNELS = ["#ninja", "#auronplay", "#rubius", "#thegrefg", "#tfue", "#shroud", "#pokimane", "#sodapoppin", "#riotgames", "#myth", "#sypherpk", "#nickmercs", "#summit1g", "#amouranth", "#esl_csgo", "#fortnite", "#loltyler1", "#bugha", "#montanablack88", "#dakotaz", "#drlupo", "#nickeh30", "#rocketleague", "#gotaga", "#gaules", "#faker", "#castro_1021", "#asmongold", "#fernanfloo", "#trymacs", "#syndicate", "#lirik", "#lolitofdez", "#loserfruit", "#wtcn", "#nightblue3", "#anomaly", "#imaqtpie", "#easportsfifa", "#cellbit", "#kendinemuzisyen", "#lilypichu", "#markiplier", "#rainbow6", "#yoda", "#twitch", "#bratishkinoff", "#solaryfortnite", "#unlostv", "#captainsparklez", "#bobross", "#boxbox", "#cdnthe3rd", "#gosu", "#cizzorz", "#yassuo", "#gamesdonequick", "#nadeshot", "#warframe", "#overwatchleague", "#jukes", "#doublelift", "#izakooo", "#rewinside", "#jahrein", "#joshog", "#forsen", "#mithrain", "#greekgodx", "#eleaguetv", "#scarra", "#rakin", "#sovietwomble", "#trick2g", "#gronkh", "#nl_kripp", "#alinity", "#kingrichard", "#cohhcarnage", "#dyrus", "#goldglove", "#ungespielt", "#voyboy", "#pashabiceps", "#skipnho", "#swiftor", "#callofduty", "#stpeach", "#starladder5", "#a_seagull", "#kittyplays", "#nick28t", "#grimmmz", "#sivhd", "#kinggothalion", "#yogscast", "#amaz", "#xqc", "#ludwig", "#illojuan", "#Caedrel", "#knekro", "#buster", "#s1mple", "#Kamet0", "#otplol_", "#LEC", "TheRealMarzaa", "#MontanaBlack88", "#TUITÊNBÔ", "#eliasn97", "#PGL", "#Gaules", "#sasavot"]  # Add your channels here
 ANON_NICK = "justinfan12345"
-LOG_FILE = "chat_logs4.csv"
 MAX_RUN_TIME = 3000  # 50 minutes (GitHub Actions limit: 60m)
 MESSAGE_DELAY = 0  # Anti-flood delay
+MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+LOG_FILE_BASE = "chat_logs"
+LOG_FILE_EXT = ".csv"
 
 # ANSI escape code removal
 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
@@ -22,14 +24,28 @@ class TwitchChatLogger:
         self.sock = socket.socket()
         self.running = True
         self.start_time = time.time()
+        self.file_counter = 1
+        self.log_file = self._get_log_file_name()
         self._init_csv()
+
+    def _get_log_file_name(self):
+        """Generate log file name with counter."""
+        return f"{LOG_FILE_BASE}{self.file_counter}{LOG_FILE_EXT}"
 
     def _init_csv(self):
         """Initialize CSV only if it doesn't exist"""
-        if not os.path.exists(LOG_FILE):
-            with open(LOG_FILE, 'w', newline='', encoding='utf-8') as f:
+        if not os.path.exists(self.log_file):
+            with open(self.log_file, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
                 writer.writerow(["Timestamp", "Channel", "User", "Message"])
+
+    def _check_file_size(self):
+        """Check file size and create new file if needed."""
+        if os.path.exists(self.log_file) and os.path.getsize(self.log_file) > MAX_FILE_SIZE:
+            self.file_counter += 1
+            self.log_file = self._get_log_file_name()
+            self._init_csv()
+            print(f"Created new log file: {self.log_file}")
 
     def connect(self):
         """Connect to Twitch IRC anonymously"""
@@ -55,15 +71,18 @@ class TwitchChatLogger:
         try:
             clean_msg = ansi_escape.sub('', message).strip()
             timestamp = datetime.now().isoformat()
-            
+
             # Print to console for GitHub Actions logging
             print(f"[{timestamp}] {channel} | {user}: {clean_msg}")
-            
+
             # Append to CSV
-            with open(LOG_FILE, 'a', newline='', encoding='utf-8') as f:
+            with open(self.log_file, 'a', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
                 writer.writerow([timestamp, channel, user, clean_msg])
-                
+
+            # Check and create new file
+            self._check_file_size()
+
         except Exception as e:
             print(f"Logging error: {str(e)}")
 
@@ -73,21 +92,21 @@ class TwitchChatLogger:
         try:
             while self.running and (time.time() - self.start_time < MAX_RUN_TIME):
                 buffer += self.sock.recv(4096).decode('utf-8', errors='ignore')
-                
+
                 while '\r\n' in buffer:
                     line, buffer = buffer.split('\r\n', 1)
-                    
+
                     # Handle PING/PONG
                     if line.startswith('PING'):
                         self.sock.send("PONG :tmi.twitch.tv\r\n".encode('utf-8'))
                         print("[System] Responded to PING")
                         continue
-                        
+
                     # Parse and log messages
                     user, channel, message = self.parse_message(line)
                     if user and channel and message:
                         self.log_message(channel, user, message)
-                        
+
                     time.sleep(MESSAGE_DELAY)
 
         except Exception as e:
