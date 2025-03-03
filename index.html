@@ -2,136 +2,136 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Twitch Chat Logs Graphs</title>
-  <!-- Include Papa Parse for CSV processing -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-  <!-- Include Chart.js for drawing charts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Twitch Chat Graphs Gallery</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    #feedback { margin-bottom: 10px; }
-    #progress-bar { width: 100%; background: #ddd; margin-bottom: 20px; }
-    #progress { width: 0%; height: 20px; background: #4caf50; }
-    canvas { margin-bottom: 30px; }
+    /* Dark theme styling */
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #ffffff;
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-gap: 20px;
+    }
+    .gallery-item {
+      background-color: #1e1e1e;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      text-align: center;
+    }
+    .gallery-item img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .caption {
+      margin-top: 8px;
+      font-size: 0.9em;
+      color: #bbbbbb;
+    }
+    a {
+      color: #bb86fc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
-  <h1>Twitch Chat Logs Graphs</h1>
-  <div id="feedback">Starting CSV processing...</div>
-  <div id="progress-bar">
-    <div id="progress"></div>
+  <h1>Twitch Chat Graphs</h1>
+  <div class="gallery">
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph1_time_series.png" alt="Graph 1: Time Series">
+      <div class="caption">Graph 1: Time Series</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph2_top_channels.png" alt="Graph 2: Top 10 Channels">
+      <div class="caption">Graph 2: Top 10 Channels</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph3_message_length_hist.png" alt="Graph 3: Message Length Histogram">
+      <div class="caption">Graph 3: Message Length Histogram</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph4_top_users.png" alt="Graph 4: Top 10 Active Users">
+      <div class="caption">Graph 4: Top 10 Active Users</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph5_messages_by_hour.png" alt="Graph 5: Messages by Hour">
+      <div class="caption">Graph 5: Messages by Hour</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph6_messages_by_day_of_week.png" alt="Graph 6: Messages by Day">
+      <div class="caption">Graph 6: Messages by Day</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph7_word_count_hist.png" alt="Graph 7: Word Count Histogram">
+      <div class="caption">Graph 7: Word Count Histogram</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph8_scatter_length_vs_wordcount.png" alt="Graph 8: Length vs. Word Count">
+      <div class="caption">Graph 8: Length vs. Word Count</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph9_boxplot_top5_channels.png" alt="Graph 9: Box Plot Top 5 Channels">
+      <div class="caption">Graph 9: Box Plot Top 5 Channels</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph10_wordcloud.png" alt="Graph 10: Word Cloud">
+      <div class="caption">Graph 10: Word Cloud</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph11_emote_density_hist.png" alt="Graph 11: Emote Density Histogram">
+      <div class="caption">Graph 11: Emote Density Histogram</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph12_avg_emote_density.png" alt="Graph 12: Average Emote Density">
+      <div class="caption">Graph 12: Average Emote Density</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph13_repetition_ratio_hist.png" alt="Graph 13: Repetition Ratio Histogram">
+      <div class="caption">Graph 13: Repetition Ratio Histogram</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph14_avg_repetition_ratio.png" alt="Graph 14: Average Repetition Ratio">
+      <div class="caption">Graph 14: Average Repetition Ratio</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph15_emote_vs_repetition.png" alt="Graph 15: Emote vs. Repetition">
+      <div class="caption">Graph 15: Emote vs. Repetition</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph16_top_words.png" alt="Graph 16: Top 20 Most Common Words">
+      <div class="caption">Graph 16: Top 20 Most Common Words</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph17_unique_word_ratio_hist.png" alt="Graph 17: Unique Word Ratio Histogram">
+      <div class="caption">Graph 17: Unique Word Ratio Histogram</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph18_length_vs_unique_ratio.png" alt="Graph 18: Length vs. Unique Word Ratio">
+      <div class="caption">Graph 18: Length vs. Unique Word Ratio</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph19_day_hour_heatmap.png" alt="Graph 19: Heatmap Day & Hour">
+      <div class="caption">Graph 19: Heatmap Day & Hour</div>
+    </div>
+    <div class="gallery-item">
+      <img src="https://mt2300v2.github.io/twitch-chat/graph20_top5_channels_pie.png" alt="Graph 20: Top 5 Channels Pie Chart">
+      <div class="caption">Graph 20: Top 5 Channels Pie Chart</div>
+    </div>
   </div>
-  <!-- Canvas for the Messages Per Minute Chart -->
-  <canvas id="chartMessagesPerMinute" width="800" height="400"></canvas>
-  <!-- Canvas for the Top 10 Active Users Chart -->
-  <canvas id="chartMessagesPerUser" width="800" height="400"></canvas>
-
-  <script>
-    // Aggregation objects
-    const messagesPerMinute = {}; // { "YYYY-MM-DD HH:MM": count }
-    const messagesPerUser = {};   // { username: count }
-    let totalRows = 0;
-
-    // Update progress feedback (simple text update; more advanced handling is possible if file size is known)
-    function updateFeedback(processedRows) {
-      document.getElementById('feedback').innerText = `Processed ${processedRows} rows...`;
-    }
-
-    // Update a simple progress bar (if total file size/rows known, you can adjust this accordingly)
-    function updateProgressBar(percentage) {
-      document.getElementById('progress').style.width = percentage + '%';
-    }
-
-    // URL for the CSV file – using the raw version from GitHub
-    const csvUrl = 'https://raw.githubusercontent.com/Mt2300v2/twitch-chat/refs/heads/main/chat_logs.csv';
-
-    Papa.parse(csvUrl, {
-      download: true,
-      header: true,
-      worker: true, // offload parsing to a separate thread
-      chunk: function(results, parser) {
-        const rows = results.data;
-        totalRows += rows.length;
-        rows.forEach(row => {
-          // Assuming each row has a 'timestamp' and 'username' field.
-          // Adjust the field names if your CSV columns are different.
-          const timestamp = row.timestamp;
-          const username = row.username;
-          if (timestamp) {
-            // Get the minute part (assumes a format like "YYYY-MM-DD HH:MM:SS")
-            const minute = timestamp.substring(0, 16);
-            messagesPerMinute[minute] = (messagesPerMinute[minute] || 0) + 1;
-          }
-          if (username) {
-            messagesPerUser[username] = (messagesPerUser[username] || 0) + 1;
-          }
-        });
-        updateFeedback(totalRows);
-        // If you know the total size (or estimate), you could update the progress bar here.
-        // For example: updateProgressBar((totalRows / estimatedTotalRows) * 100);
-      },
-      complete: function() {
-        document.getElementById('feedback').innerText = `CSV processing complete: ${totalRows} rows processed.`;
-        updateProgressBar(100);
-        drawCharts();
-      },
-      error: function(err) {
-        document.getElementById('feedback').innerText = 'Error parsing CSV: ' + err;
-      }
-    });
-
-    // Function to create charts after parsing is complete
-    function drawCharts() {
-      // Chart 1: Messages Per Minute (line chart)
-      const minutes = Object.keys(messagesPerMinute).sort();
-      const counts = minutes.map(min => messagesPerMinute[min]);
-      const ctx1 = document.getElementById('chartMessagesPerMinute').getContext('2d');
-      new Chart(ctx1, {
-        type: 'line',
-        data: {
-          labels: minutes,
-          datasets: [{
-            label: 'Messages per Minute',
-            data: counts,
-            fill: false,
-            borderColor: 'rgba(75, 192, 192, 1)',
-            tension: 0.1
-          }]
-        },
-        options: {
-          scales: {
-            x: {
-              ticks: {
-                autoSkip: true,
-                maxTicksLimit: 20
-              }
-            }
-          }
-        }
-      });
-
-      // Chart 2: Top 10 Active Users (bar chart)
-      const userEntries = Object.entries(messagesPerUser);
-      userEntries.sort((a, b) => b[1] - a[1]);
-      const topUsers = userEntries.slice(0, 10);
-      const usernames = topUsers.map(entry => entry[0]);
-      const userCounts = topUsers.map(entry => entry[1]);
-      const ctx2 = document.getElementById('chartMessagesPerUser').getContext('2d');
-      new Chart(ctx2, {
-        type: 'bar',
-        data: {
-          labels: usernames,
-          datasets: [{
-            label: 'Messages by User',
-            data: userCounts,
-            backgroundColor: 'rgba(153, 102, 255, 0.6)'
-          }]
-        },
-        options: {
-          indexAxis: 'y'
-        }
-      });
-    }
-  </script>
 </body>
 </html>
