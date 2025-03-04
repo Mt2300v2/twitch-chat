@@ -3,7 +3,7 @@ name: Run Python Script and Commit Graphs
 on:
   schedule:
     # Runs every minute (note: GitHub may throttle scheduled workflows to a minimum interval)
-    - cron: "* * * * *"
+    - cron: '0 0 * * *'
   workflow_dispatch:
 
 jobs:
