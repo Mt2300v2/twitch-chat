@@ -12,7 +12,7 @@ CHANNELS = ["#ninja", "#auronplay", "#rubius", "#thegrefg", "#tfue", "#shroud", 
 ANON_NICK = "justinfan12345"
 MAX_RUN_TIME = 3000  # 50 minutes (GitHub Actions limit: 60m)
 MESSAGE_DELAY = 0  # Anti-flood delay
-MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 LOG_FILE_BASE = "chat_logs"
 LOG_FILE_EXT = ".csv"
 
